@@ -1,6 +1,8 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 
 import { recommandAPI } from "../../api/api";
+
+import useDebounce from "../../util/debounce";
 
 import RecommendIfe from "../../interface/interface";
 
@@ -11,27 +13,11 @@ function Serach() {
    const [recommendList, setRecommendList] = useState<RecommendIfe[]>([]);
    const [selectIdx, setSelectIdx] = useState(-1);
 
-   function useDebounce<T extends any[]>(
-      callback: (...params: T) => void,
-      time: number
-   ) {
-      const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-      return (...params: T) => {
-         // 실행한 함수(setTimeout())를 취소
-         if (timer.current) clearTimeout(timer.current);
-         // delay가 지나면 callback 함수를 실행
-         timer.current = setTimeout(() => {
-            callback(...params);
-            timer.current = null;
-         }, time);
-      };
-   }
-
    const getRecommends = async (word: string) => {
       try {
          const res = await recommandAPI.getRecommends(word);
          const Recommends: RecommendIfe[] = [...res.data];
-         if (Recommends.length > 0 && Recommends.length < 30) {
+         if (Recommends.length > 0) {
             setRecommendList(Recommends);
          } else {
             setRecommendList([]);
@@ -58,12 +44,18 @@ function Serach() {
       setSearchWord(e.target.value);
    };
 
-   const debounceHandleChange = useDebounce<
-      [React.ChangeEvent<HTMLInputElement>]
-   >(handleChange, 500);
+   const debounceHandleChange = useDebounce<[React.ChangeEvent<HTMLInputElement>]>(
+      handleChange,
+      500
+   );
 
    const handleOnClickSerach = () => {
       console.log("OnClick Serach");
+   };
+
+   const makeBold = (item: string, word: string) => {
+      var re = new RegExp(word, "g");
+      return item.replace(re, "<i>" + word + "</i>");
    };
 
    const ArrowDown = "ArrowDown";
@@ -90,51 +82,35 @@ function Serach() {
       }
    };
 
-   const debounceHandleKeyArrow = useDebounce<[React.KeyboardEvent]>(
-      handleKeyArrow,
-      100
-   );
-
-   const makeBold = (item: string, word: string) => {
-      var re = new RegExp(word, "g");
-      return item.replace(re, "<i>" + word + "</i>");
-   };
+   const debounceHandleKeyArrow = useDebounce<[React.KeyboardEvent]>(handleKeyArrow, 100);
 
    return (
-      <div className="wrap" onKeyDown={debounceHandleKeyArrow}>
-         <h1>국내 모든 임상시험 검색하고</h1>
-         <h1>온라인으로 참여하기</h1>
-         <div className="search">
+      <>
+         <div className="search" onKeyDown={debounceHandleKeyArrow}>
             <input
                type="text"
                className="searchTerm"
                placeholder="질환명을 입력해 주세요."
                onChange={debounceHandleChange}
             />
-            <button
-               type="submit"
-               className="searchButton"
-               onClick={handleOnClickSerach}
-            >
+            <button type="submit" className="searchButton" onClick={handleOnClickSerach}>
                검색
             </button>
          </div>
-         <div className="recommendContainer">
-            {searchWord.length === 0 && (
-               <div className="recommend">검색어가 없습니다.</div>
-            )}
+         <ul className="recommendContainer">
+            {searchWord.length === 0 && <div className="recommend">검색어가 없습니다.</div>}
             {recommendList.length > 0 &&
                recommendList.map((recommend: RecommendIfe, idx: number) => (
-                  <div
-                     className={`recommend ${idx === selectIdx ? "sel" : ""}`}
+                  <li
+                     // className={`recommend ${idx === selectIdx ? "sel" : ""}`}
                      key={idx}
                      dangerouslySetInnerHTML={{
                         __html: makeBold(recommend.sickNm, searchWord),
                      }}
-                  ></div>
+                  ></li>
                ))}
-         </div>
-      </div>
+         </ul>
+      </>
    );
 }
 
